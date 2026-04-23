@@ -219,9 +219,13 @@ async function loadTimelineList() {
     .select('*')
     .order('event_date', { ascending: false })
 
-  if (!error) {
-    timelineList.value = data || []
+  if (error) {
+    console.error('loadTimelineList error:', error)
+    timelineMsg.value = `读取时间线失败：${error.message}`
+    return
   }
+
+  timelineList.value = data || []
 }
 
 async function loadGalleryList() {
@@ -230,9 +234,13 @@ async function loadGalleryList() {
     .select('*')
     .order('shot_date', { ascending: false })
 
-  if (!error) {
-    galleryList.value = data || []
+  if (error) {
+    console.error('loadGalleryList error:', error)
+    galleryMsg.value = `读取相册失败：${error.message}`
+    return
   }
+
+  galleryList.value = data || []
 }
 
 async function loadLetterList() {
