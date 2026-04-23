@@ -623,3 +623,10 @@ a {
   gap: 16px;
   margin-bottom: 20px;
 }
+
+.letter-text {
+  white-space: pre-line;
+  font-size: 18px;
+  line-height: 1.9;
+  color: #555;
+}

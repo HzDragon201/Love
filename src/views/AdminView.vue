@@ -1,9 +1,12 @@
 <template>
   <section class="section page-section">
-    <h2>内容管理</h2>
-    <p class="section-desc">这里可以新增、查看和删除时间线事件与相册照片。</p>
-
-  <button class="secondary-btn" @click="logout">退出登录</button>
+    <div class="admin-topbar">
+      <div>
+        <h2>内容管理</h2>
+        <p class="section-desc">这里可以新增、查看和删除时间线事件、相册照片和留言内容。</p>
+      </div>
+      <button class="secondary-btn" @click="logout">退出登录</button>
+    </div>
 
     <div class="admin-grid">
       <div class="form-card">
@@ -46,6 +49,53 @@
         </form>
 
         <p v-if="galleryMsg" class="admin-msg">{{ galleryMsg }}</p>
+      </div>
+    </div>
+
+    <div class="manage-section">
+      <h3>新增留言</h3>
+
+      <form class="admin-form" @submit.prevent="submitLetter">
+        <input
+          v-model="letterForm.title"
+          type="text"
+          placeholder="留言标题"
+          required
+        />
+
+        <textarea
+          v-model="letterForm.body"
+          placeholder="留言正文"
+          rows="8"
+          required
+        ></textarea>
+
+        <button type="submit" :disabled="letterLoading">
+          {{ letterLoading ? '保存中...' : '新增留言' }}
+        </button>
+      </form>
+
+      <p v-if="letterMsg" class="admin-msg">{{ letterMsg }}</p>
+    </div>
+
+    <div class="manage-section">
+      <h3>已有留言</h3>
+
+      <div v-if="letterList.length === 0" class="empty-tip">暂无留言内容</div>
+
+      <div
+        v-for="item in letterList"
+        :key="item.id"
+        class="manage-item"
+      >
+        <div class="manage-info">
+          <div class="manage-title">{{ item.title }}</div>
+          <div class="manage-meta">{{ formatDateTime(item.created_at) }}</div>
+        </div>
+
+        <button class="danger-btn" @click="deleteLetter(item)">
+          删除
+        </button>
       </div>
     </div>
 
@@ -95,8 +145,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { supabase } from '../lib/supabase'
 import { useRouter } from 'vue-router'
+import { supabase } from '../lib/supabase'
+
 const router = useRouter()
 
 async function logout() {
@@ -116,17 +167,25 @@ const galleryForm = ref({
   description: '',
 })
 
+const letterForm = ref({
+  title: '',
+  body: '',
+})
+
 const timelineFile = ref(null)
 const galleryFile = ref(null)
 
 const timelineLoading = ref(false)
 const galleryLoading = ref(false)
+const letterLoading = ref(false)
 
 const timelineMsg = ref('')
 const galleryMsg = ref('')
+const letterMsg = ref('')
 
 const timelineList = ref([])
 const galleryList = ref([])
+const letterList = ref([])
 
 function handleTimelineFile(event) {
   timelineFile.value = event.target.files?.[0] || null
@@ -141,6 +200,17 @@ function getStoragePathFromUrl(url) {
   const index = url.indexOf(marker)
   if (index === -1) return null
   return decodeURIComponent(url.slice(index + marker.length))
+}
+
+function formatDateTime(value) {
+  if (!value) return ''
+  const d = new Date(value)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const h = String(d.getHours()).padStart(2, '0')
+  const min = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${h}:${min}`
 }
 
 async function loadTimelineList() {
@@ -162,6 +232,17 @@ async function loadGalleryList() {
 
   if (!error) {
     galleryList.value = data || []
+  }
+}
+
+async function loadLetterList() {
+  const { data, error } = await supabase
+    .from('letter_messages')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (!error) {
+    letterList.value = data || []
   }
 }
 
@@ -213,6 +294,7 @@ async function submitTimeline() {
       description: '',
     }
     timelineFile.value = null
+
     await loadTimelineList()
   } catch (err) {
     console.error(err)
@@ -252,12 +334,44 @@ async function submitGallery() {
       description: '',
     }
     galleryFile.value = null
+
     await loadGalleryList()
   } catch (err) {
     console.error(err)
     galleryMsg.value = `新增失败：${err.message}`
   } finally {
     galleryLoading.value = false
+  }
+}
+
+async function submitLetter() {
+  letterLoading.value = true
+  letterMsg.value = ''
+
+  try {
+    const { error } = await supabase
+      .from('letter_messages')
+      .insert([
+        {
+          title: letterForm.value.title,
+          body: letterForm.value.body,
+        },
+      ])
+
+    if (error) throw error
+
+    letterMsg.value = '留言新增成功'
+    letterForm.value = {
+      title: '',
+      body: '',
+    }
+
+    await loadLetterList()
+  } catch (err) {
+    console.error(err)
+    letterMsg.value = `新增失败：${err.message}`
+  } finally {
+    letterLoading.value = false
   }
 }
 
@@ -327,8 +441,29 @@ async function deleteGallery(item) {
   }
 }
 
+async function deleteLetter(item) {
+  const ok = window.confirm(`确定删除留言“${item.title}”吗？`)
+  if (!ok) return
+
+  try {
+    const { error } = await supabase
+      .from('letter_messages')
+      .delete()
+      .eq('id', item.id)
+
+    if (error) throw error
+
+    letterMsg.value = '留言删除成功'
+    await loadLetterList()
+  } catch (err) {
+    console.error(err)
+    letterMsg.value = `删除失败：${err.message}`
+  }
+}
+
 onMounted(async () => {
   await loadTimelineList()
   await loadGalleryList()
+  await loadLetterList()
 })
 </script>
