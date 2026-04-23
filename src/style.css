@@ -630,3 +630,35 @@ a {
   line-height: 1.9;
   color: #555;
 }
+
+.letter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.letter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.letter-header h3 {
+  margin: 0;
+  font-size: 24px;
+  color: #d85b88;
+}
+
+.letter-time {
+  font-size: 14px;
+  color: #999;
+}
+
+.letter-text {
+  white-space: pre-line;
+  font-size: 18px;
+  line-height: 1.9;
+  color: #555;
+}
